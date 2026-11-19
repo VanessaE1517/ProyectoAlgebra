@@ -195,17 +195,17 @@ if __name__ == "__main__":
 #prueba de la comprobacion de Ax=b
 
     
-A = [
-    [3, 2, 1],
-    [1, 1, 1],
-    [2, 1, 3]
-]
+    A = [
+        [3, 2, 1],
+        [1, 1, 1],
+        [2, 1, 3]
+    ]
 
-b = [48, 23, 49]
+    b = [48, 23, 49]
 
-x = [10, 5, 8]
+    x = [10, 5, 8]
 
-correcto, Ax = comprobar_solucion(A, b, x)
+    correcto, Ax = comprobar_solucion(A, b, x)
 
-print("Resultado de Ax:", Ax)
-print("¿La solucion es correcta?", correcto)
+    print("Resultado de Ax:", Ax)
+    print("¿La solucion es correcta?", correcto)
