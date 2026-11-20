@@ -2,19 +2,23 @@ import time
 import copy
 import random
 
-from logic.gauss import (
-    crear_matriz_aumentada,
-    eliminacion_gaussiana,
-    sustitucion_hacia_atras,
-    comprobar_solucion
-)
-from logic.clasificacion import clasificar, calcular_rangos
+# Importa la función que obtiene la solución general de un sistema
+# cuando este tiene infinitas soluciones.
 from logic.solucion_general import solucion_general
+
+# Importa el método iterativo de Gauss-Seidel.
 from logic.gauss_seidel import gauss_seidel
-from logic.validaciones import validar_n, validar_forma, validar_tabla
-from logic.lectura import leer_csv
-from logic.comparacion_tiempos import ComparacionTiempos
-from logic.experimento import Experimento
+
+# Importa las funciones necesarias para aplicar el método de eliminación gaussiana.
+from logic.gauss import (
+    crear_matriz_aumentada,  # Construye la matriz aumentada del sistema.
+    eliminacion_gaussiana,   # Realiza la eliminación gaussiana.
+    sustitucion_hacia_atras, # Obtiene la solución mediante sustitución hacia atrás.
+    comprobar_solucion       # Comprueba si la solución satisface el sistema.
+)
+
+# Importa la función que clasifica el sistema según sus soluciones.
+from logic.clasificacion import clasificar
 
 # Importa la lectura y la validación de archivos CSV.
 from logic.lectura import leer_csv
@@ -23,82 +27,51 @@ from logic.validaciones import validar_forma, validar_tabla
 
 class Dominio:
 
-    # Constructor de la clase.
+    # Constructor de la clase Dominio.
     def __init__(self):
-        self.comparador = ComparacionTiempos()
-        self.experimento = Experimento()
+        pass
 
-    # Validar la cantidad de incógnitas.
-    def validar_n(self, texto, minimo=2, maximo=8):
-        return validar_n(texto, minimo, maximo)
-
-    # Validar la forma de una matriz.
-    def validar_forma(self, filas, n):
-        return validar_forma(filas, n)
-
-    # Validar los datos de una tabla.
-    def validar_tabla(self, tabla):
-        return validar_tabla(tabla)
-
-    # Leer un archivo CSV y preparar sus datos.
-    def cargar_csv(self, ruta):
-        correcto, filas = leer_csv(ruta)
-
-        if not correcto:
-            raise ValueError(filas)
-
-        correcto, resultado = validar_tabla(filas)
-
-        if not correcto:
-            raise ValueError(resultado)
-
-        return resultado
-
-    # Resolver un sistema mediante eliminación gaussiana.
+    # Resuelve un sistema de ecuaciones utilizando eliminación gaussiana.
     def resolver_sistema(self, A, b):
-        n = len(A)
 
-        if n == 0 or len(b) != n:
-            raise ValueError("Las dimensiones del sistema no son correctas.")
-
-        # Comprobar que la matriz sea cuadrada.
-        tabla = []
-
-        for i in range(n):
-            tabla.append(list(A[i]) + [b[i]])
-
-        correcto, mensaje = validar_forma(tabla, n)
-
-        if not correcto:
-            raise ValueError(mensaje)
-
-        # Construir la matriz aumentada.
+        # Construye la matriz aumentada a partir de la matriz A y el vector b.
         matriz = crear_matriz_aumentada(A, b)
 
-        # Aplicar eliminación gaussiana.
+        # Aplica eliminación gaussiana.
+        # Retorna la matriz resultante, los pasos realizados,
+        # las matrices de cada paso y las posiciones de los pivotes.
         resultado, pasos, matrices, pivotes = eliminacion_gaussiana(matriz)
 
-        # Clasificar el sistema y calcular sus rangos.
+        # Determina si el sistema tiene solución única, infinitas soluciones o ninguna.
         tipo = clasificar(resultado, pivotes)
-        rango_A, rango_aumentada = calcular_rangos(resultado, pivotes)
 
-        # Inicializar los resultados.
-        solucion = None
-        verificacion = None
-        Ax = None
-        general = None
-        libres = None
+        # Calcula el rango de la matriz de coeficientes.
+        rango_A = len(pivotes)
 
-        # Si tiene solución única.
+        # Calcula el rango de la matriz aumentada.
+        # Si el sistema no tiene solución, el rango aumentado es mayor.
+        rango_aumentada = rango_A + 1 if tipo == "ninguna" else rango_A
+
+        # Inicializa las variables que almacenarán los resultados.
+        solucion = verificacion = Ax = general = libres = None
+
+        # Si el sistema tiene solución única:
         if tipo == "unica":
+
+            # Obtiene los valores de las incógnitas mediante sustitución hacia atrás.
             solucion = sustitucion_hacia_atras(resultado)
+
+            # Comprueba la solución sustituyendo los valores en el sistema original.
             verificacion, Ax = comprobar_solucion(A, b, solucion)
 
-        # Si tiene infinitas soluciones.
+        # Si el sistema tiene infinitas soluciones:
         elif tipo == "infinitas":
+
+            # Obtiene la expresión general de las soluciones
+            # y las variables libres del sistema.
             general, libres = solucion_general(resultado, pivotes)
 
-        # Devolver los resultados.
+        # Retorna toda la información obtenida al resolver el sistema.
         return {
             "tipo": tipo,
             "matriz": resultado,
@@ -114,33 +87,40 @@ class Dominio:
             "libres": libres
         }
 
-    # Comprobar si la matriz es diagonalmente dominante.
+    # Valida si una matriz cumple las condiciones necesarias
+    # para aplicar Gauss-Seidel.
     def validar_matriz_seidel(self, A):
+
+        # Obtiene la cantidad de filas de la matriz.
         n = len(A)
 
-        if n == 0:
-            raise ValueError("La matriz está vacía.")
+        # Comprueba que la matriz sea cuadrada y tenga al menos 2 filas.
+        if n < 2 or any(len(fila) != n for fila in A):
+            raise ValueError("La matriz debe ser cuadrada y tener al menos 2 filas.")
 
-        for fila in A:
-            if len(fila) != n:
-                raise ValueError("La matriz debe ser cuadrada.")
-
+        # Comprueba que ningún elemento de la diagonal principal sea cero.
         for i in range(n):
             if A[i][i] == 0:
-                raise ValueError("La diagonal principal no puede tener ceros.")
+                raise ValueError(f"El elemento A[{i+1},{i+1}] de la diagonal principal no puede ser cero.")
 
+        # Inicialmente se considera que la matriz es diagonalmente dominante.
         dominante = True
 
+        # Recorre cada fila de la matriz.
         for i in range(n):
-            suma = 0
 
-            for j in range(n):
-                if i != j:
-                    suma += abs(A[i][j])
+            # Suma los valores absolutos de los elementos que están
+            # fuera de la diagonal principal en la fila actual.
+            suma = sum(abs(A[i][j]) for j in range(n) if j != i)
 
+            # Comprueba si el elemento diagonal es menor que esa suma.
             if abs(A[i][i]) < suma:
-                dominante = False
 
+                # Si no cumple la condición, la matriz no es diagonalmente dominante.
+                dominante = False
+                break
+
+        # Retorna True si es diagonalmente dominante o False en caso contrario.
         return dominante
 
     # Comprueba si la matriz es estrictamente diagonalmente dominante:
@@ -159,16 +139,22 @@ class Dominio:
 
     # Resuelve un sistema utilizando el método iterativo de Gauss-Seidel.
     def resolver_seidel(self, A, b, x0=None, tolerancia=0.000001, max_iteraciones=1000):
-        if x0 is None:
-            x0 = [0] * len(A)
 
-        return gauss_seidel(A, b, x0, tolerancia, max_iteraciones)
+        # Obtiene el número de incógnitas del sistema.
+        n = len(A)
 
-    # Comparar los tiempos de ambos métodos.
+        # Si no se proporciona una aproximación inicial,
+        # se utiliza un vector de ceros.
+        if x0 is None: x0 = [0] * n
+
+        # Ejecuta el método de Gauss-Seidel con los parámetros recibidos.
+        resultado = gauss_seidel(A, b, x0, tolerancia, max_iteraciones)
+
+        # Retorna los resultados obtenidos por el método.
+        return resultado
+
+    # Compara el rendimiento de la eliminación gaussiana y Gauss-Seidel.
     def comparar_metodos(self, A, b, x0=None, tolerancia=0.000001, max_iteraciones=1000, repeticiones=1):
-        return self.comparador.comparar_metodos(
-            A, b, x0, tolerancia, max_iteraciones, repeticiones
-        )
 
         # Obtiene el número de incógnitas del sistema.
         n = len(A)
@@ -434,68 +420,3 @@ class Dominio:
 
         # Retorna la lista con los resultados de todos los tamaños evaluados.
         return resultados
-
-
-# Comprueba si este archivo se está ejecutando directamente
-# y no está siendo importado desde otro módulo.
-if __name__ == "__main__":
-
-    # Crea una instancia de la clase Dominio.
-    dominio = Dominio()
-
-    # Define un sistema de ecuaciones de ejemplo.
-    A = [[10, 1, 1], [1, 10, 1], [1, 1, 10]]
-    b = [12, 12, 12]
-
-    # Define el vector de aproximación inicial para Gauss-Seidel.
-    x0 = [0, 0, 0]
-
-    # Ejecuta la comparación entre eliminación gaussiana y Gauss-Seidel.
-    # Se utiliza una tolerancia de 0.000001, máximo 1000 iteraciones
-    # y se repite el experimento 3 veces.
-    resultado = dominio.comparar_metodos(
-        A, b, x0,
-        tolerancia=0.000001,
-        max_iteraciones=1000,
-        repeticiones=3
-    )
-
-    # Muestra la solución obtenida mediante eliminación gaussiana.
-    print("SOLUCIÓN GAUSSIANA:")
-    print(resultado["solucion_gauss"])
-
-    # Muestra la solución obtenida mediante Gauss-Seidel.
-    print("\nSOLUCIÓN GAUSS-SEIDEL:")
-    print(resultado["solucion_seidel"])
-
-    # Muestra las diferencias entre las soluciones de ambos métodos.
-    print("\nDIFERENCIAS:")
-    print(resultado["diferencias"])
-
-    # Muestra la cantidad de iteraciones realizadas por Gauss-Seidel.
-    print("\nITERACIONES:")
-    print(resultado["iteraciones"])
-
-    # Indica si Gauss-Seidel logró converger.
-    print("\n¿CONVERGIÓ?")
-    print(resultado["convergencia"])
-
-    # Indica si la matriz es diagonalmente dominante.
-    print("\n¿ES DIAGONALMENTE DOMINANTE?")
-    print(resultado["diagonalmente_dominante"])
-
-    # Muestra cuál de los dos métodos tuvo el menor tiempo promedio.
-    print("\nMÉTODO MÁS RÁPIDO:")
-    print(resultado["metodo_mas_rapido"])
-
-    # Muestra el factor de rapidez entre ambos métodos.
-    print("\nFACTOR DE RAPIDEZ:")
-    print(resultado["factor_rapidez"])
-
-    # Muestra el tiempo promedio de ejecución de la eliminación gaussiana.
-    print("\nTIEMPO GAUSSIANO PROMEDIO:")
-    print(resultado["tiempo_gauss_promedio"])
-
-    # Muestra el tiempo promedio de ejecución de Gauss-Seidel.
-    print("\nTIEMPO GAUSS-SEIDEL PROMEDIO:")
-    print(resultado["tiempo_seidel_promedio"])
