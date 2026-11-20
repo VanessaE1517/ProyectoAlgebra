@@ -1,6 +1,5 @@
-#Estos import se borran luego. solo es para prueba
+
 from fractions import Fraction
-from logic.gauss import crear_matriz_aumentada, eliminacion_gaussiana
 
 
 #Lo que hace es recibir las columnas pivote y las cant de incógnitas 
@@ -74,61 +73,3 @@ def solucion_general(m, columnas_pivote):
         general[col] = expresion
 
      return general, libres
-
-
-
-
-   #Test para ver si las varibles libres y solucion general funciona
-    #Esto se borra luego
-if __name__ == "__main__":
-        columnas_pivote = [0, 1]
-        n = 3
-
-        libres = variables_libres(columnas_pivote, n)
-
-        print("Variables libres:", libres)
-
-        general = [
-            [9, -3],
-            [-3, 2],
-            [0, 1]
-        ]
-
-        valores = [2]
-
-        resultado = evaluar_solucion_general(general, valores)
-
-        print("Solucion evaluada:", resultado)
-
-
-    #estos print son para probar las funciones de escalar y sumar listas
-        print(escalar_lista([9, -3], 2))
-        print(sumar_listas([1, 2], [3, 4]))
-
-
-            #acá estos probando ya la solucion general
-
-        A = [
-            [1, 1, 1, 1],
-            [0, 1, 1, 0]
-        ]
-
-        b = [4, 1]
-
-        m = crear_matriz_aumentada(A, b)
-
-        m, pasos, matrices, columnas_pivote = eliminacion_gaussiana(m)
-
-        print("Matriz después de Gauss:")
-        print(m)
-
-        print("Columnas pivote:")
-        print(columnas_pivote)
-
-        general, libres = solucion_general(m, columnas_pivote)
-
-        print("Solución general:")
-        print(general)
-
-        print("Variables libres:")
-        print(libres)

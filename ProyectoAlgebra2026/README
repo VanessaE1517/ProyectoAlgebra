@@ -1,0 +1,83 @@
+# Proyecto Programado: Eliminación gaussiana y Gauss-Seidel
+
+Universidad de Costa Rica, Sede del Atlántico, Recinto de Turrialba
+IF-0012 Álgebra Lineal para Informática Empresarial, II Ciclo 2026
+Docente: Ronald Arias Madriz
+
+Integrantes:
+- Angie Brenes
+- Nicolle ELizondo
+
+## De qué trata
+
+Es un programa en Python con interfaz gráfica que trabaja con sistemas de ecuaciones lineales Ax = b de tamaño n × n. Tiene dos opciones:
+
+1. **Resolver y clasificar:** resuelve el sistema con eliminación gaussiana (con pivoteo parcial) y dice si tiene solución única, infinitas soluciones o ninguna. Si es única, muestra la solución y la comprobación Ax = b. Si son infinitas, muestra la solución general con parámetros. También tiene la casilla "Mostrar paso a paso".
+2. **Comparar tiempos:** resuelve el mismo sistema con eliminación gaussiana y con Gauss-Seidel, mide cuánto tarda cada uno y dice cuál fue más rápido. También tiene el modo experimento para varios tamaños de n.
+
+Los dos métodos están programados por nosotros, sin usar funciones de librerías para resolver el sistema.
+
+## Cómo abrir la aplicación
+
+1. Descomprimir el archivo `.zip`.
+2. Abrir la carpeta `proyecto` en Visual Studio Code (o en cualquier terminal).
+3. Abrir una terminal que esté **dentro de la carpeta `proyecto`**, la que tiene el archivo `main.py`.
+4. Escribir:
+Dato: tiene que usar cd ProyectoAlgebra2026, luego cd proyecto y ya puede usar python main.py
+
+En algunos computadores en Windows el comando es `py main.py`.
+
+Es importante que la terminal esté en esa carpeta, si no Python no encuentra los demás archivos.
+
+## Cómo usarla
+
+**Opción 1 (resolver y clasificar)**
+- Escribir n (entre 2 y 8). Aparece una tabla de n × (n+1) casillas: las primeras n columnas son la matriz A y la última es el vector b.
+- Se pueden escribir enteros, decimales con punto (`0.5`) o fracciones (`3/4`).
+- Si se marca "Mostrar paso a paso", se ven las operaciones de fila y la matriz después de cada una, con los botones anterior y siguiente.
+
+**Opción 2 (comparar tiempos)**
+- Escribir n (2 o más), la aproximación inicial, la tolerancia y el máximo de iteraciones.
+- El sistema tiene que tener solución única. Si no la tiene, el programa avisa por qué no se puede comparar.
+- Si la matriz no es diagonalmente dominante, avisa que Gauss-Seidel podría no converger.
+
+## Cargar un sistema desde un archivo CSV
+
+El archivo se puede cargar desde la interfaz. Tiene que cumplir esto:
+
+- Sin encabezado.
+- Los valores separados por **comas** 
+- Exactamente n filas y n + 1 columnas. La última columna es el vector b.
+- Los decimales con punto, no con coma.
+- Si el archivo está abierto en Excel, hay que cerrarlo antes de cargarlo.
+
+Ejemplo (el sistema 3x1 + 2x2 + x3 = 48, x1 + 2x2 + x3 = 28, x1 + x2 + 2x3 = 31):
+
+```
+3,2,1,48
+1,2,1,28
+1,1,2,31
+```
+
+Si el archivo tiene algún problema (filas de más o de menos, letras, divisiones entre cero), el programa muestra un mensaje que dice dónde está el error.
+
+## Carpetas del proyecto
+
+```
+proyecto/
+├── main.py          archivo que se ejecuta
+├── README.md
+├── data/            archivos CSV de prueba
+├── domain/          conecta la interfaz con la lógica
+├── gui/             la interfaz gráfica
+    ├── ventana_principal.py     la ventana principal
+└── logic/           la parte matemática, un archivo por problema
+    ├── gauss.py             eliminación gaussiana y sustitución hacia atrás
+    ├── clasificacion.py     tipo de solución y rangos
+    ├── solucion_general.py  variables libres y solución con parámetros
+    ├── gauss_seidel.py      método iterativo
+    ├── validaciones.py      validación de lo que escribe el usuario
+    └── lectura.py           lectura de números y de archivos CSV
+```
+
+La interfaz solo habla con `domain`, y `domain` es el que llama a los archivos de `logic`.
