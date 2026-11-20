@@ -1,69 +1,62 @@
 
 def gauss_seidel(A, b, x0, tolerancia, max_iteraciones=1000):
-    # Obtiene la cantidad de filas de la matriz A.
+
+    # Cantidad de incógnitas.
     n = len(A)
 
-    # Verifica que la matriz no esté vacía y que los vectores b y x0
-    # tengan la misma cantidad de elementos que la matriz.
+    # Comprobar que las dimensiones sean correctas.
     if n == 0 or len(b) != n or len(x0) != n:
-        raise ValueError("Las dimensiones de A, b y x0 no coinciden.")
+        raise ValueError("Las dimensiones no coinciden.")
 
-    # Comprueba que la matriz sea cuadrada.
+    # Comprobar que la matriz sea cuadrada.
     for fila in A:
         if len(fila) != n:
             raise ValueError("La matriz debe ser cuadrada.")
 
-    # Convierte todos los elementos de la matriz y los vectores a números decimales.
+    # Trabajar con números decimales.
     A = [[float(valor) for valor in fila] for fila in A]
     b = [float(valor) for valor in b]
     x = [float(valor) for valor in x0]
 
-    # Verifica que la tolerancia sea un número positivo.
-    if tolerancia <= 0:
-        raise ValueError("La tolerancia debe ser mayor que cero.")
+    # Comprobar los parámetros.
+    if tolerancia <= 0 or max_iteraciones <= 0:
+        raise ValueError("Los parámetros deben ser positivos.")
 
-    # Verifica que el máximo de iteraciones sea positivo.
-    if max_iteraciones <= 0:
-        raise ValueError("El máximo de iteraciones debe ser positivo.")
-
-    # Comprueba que ningún elemento de la diagonal principal sea cero,
-    # ya que se necesita dividir entre esos valores.
+    # Comprobar que no haya ceros en la diagonal.
     for i in range(n):
         if A[i][i] == 0:
-            raise ValueError(
-                "Hay un cero en la diagonal principal. "
-                "No se puede aplicar Gauss-Seidel directamente."
-            )
+            raise ValueError("La diagonal principal no puede tener ceros.")
 
-    # Inicializa el error con infinito para comenzar las iteraciones.
     error = float("inf")
 
-    # Repite el proceso hasta alcanzar la tolerancia o el máximo de iteraciones.
+    # Repetir el método hasta alcanzar la tolerancia.
     for iteracion in range(1, max_iteraciones + 1):
 
-        # Guarda una copia de los valores anteriores de las incógnitas.
-        x_anterior = x.copy()
+        # Guardar los valores anteriores.
+        anterior = x.copy()
 
-        # Recorre cada ecuación del sistema para actualizar las incógnitas.
+        # Calcular los nuevos valores de las incógnitas.
         for i in range(n):
+
             suma = 0
 
-            # Calcula la suma de los demás términos de la ecuación,
-            # utilizando los valores más recientes disponibles de x.
             for j in range(n):
-                if j != i:
+                if i != j:
                     suma += A[i][j] * x[j]
 
-            # Calcula el nuevo valor de la incógnita correspondiente.
             x[i] = (b[i] - suma) / A[i][i]
 
-        # Calcula el error máximo entre los valores nuevos y los anteriores.
-        error = max(abs(x[i] - x_anterior[i]) for i in range(n))
+        # Calcular el error.
+        error = 0
 
-        # Comprueba si el error es menor o igual que la tolerancia establecida.
+        for i in range(n):
+            diferencia = abs(x[i] - anterior[i])
+
+            if diferencia > error:
+                error = diferencia
+
+        # Comprobar si se alcanzó la tolerancia.
         if error <= tolerancia:
-
-            # Devuelve los resultados si el método logró converger.
             return {
                 "solucion": x,
                 "iteraciones": iteracion,
@@ -71,8 +64,7 @@ def gauss_seidel(A, b, x0, tolerancia, max_iteraciones=1000):
                 "convergencia": True
             }
 
-    # Si se alcanza el máximo de iteraciones sin cumplir la tolerancia,
-    # devuelve los resultados indicando que no hubo convergencia.
+    # Si se alcanza el máximo de iteraciones.
     return {
         "solucion": x,
         "iteraciones": max_iteraciones,

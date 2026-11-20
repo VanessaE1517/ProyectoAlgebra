@@ -2,23 +2,19 @@ import time
 import copy
 import random
 
-# Importa la función que obtiene la solución general de un sistema
-# cuando este tiene infinitas soluciones.
-from logic.solucion_general import solucion_general
-
-# Importa el método iterativo de Gauss-Seidel.
-from logic.gauss_seidel import gauss_seidel
-
-# Importa las funciones necesarias para aplicar el método de eliminación gaussiana.
 from logic.gauss import (
-    crear_matriz_aumentada,  # Construye la matriz aumentada del sistema.
-    eliminacion_gaussiana,   # Realiza la eliminación gaussiana.
-    sustitucion_hacia_atras, # Obtiene la solución mediante sustitución hacia atrás.
-    comprobar_solucion       # Comprueba si la solución satisface el sistema.
+    crear_matriz_aumentada,
+    eliminacion_gaussiana,
+    sustitucion_hacia_atras,
+    comprobar_solucion
 )
-
-# Importa la función que clasifica el sistema según sus soluciones.
-from logic.clasificacion import clasificar
+from logic.clasificacion import clasificar, calcular_rangos
+from logic.solucion_general import solucion_general
+from logic.gauss_seidel import gauss_seidel
+from logic.validaciones import validar_n, validar_forma, validar_tabla
+from logic.lectura import leer_csv
+from logic.comparacion_tiempos import ComparacionTiempos
+from logic.experimento import Experimento
 
 # Importa la lectura y la validación de archivos CSV.
 from logic.lectura import leer_csv
@@ -27,51 +23,82 @@ from logic.validaciones import validar_forma, validar_tabla
 
 class Dominio:
 
-    # Constructor de la clase Dominio.
+    # Constructor de la clase.
     def __init__(self):
-        pass
+        self.comparador = ComparacionTiempos()
+        self.experimento = Experimento()
 
-    # Resuelve un sistema de ecuaciones utilizando eliminación gaussiana.
+    # Validar la cantidad de incógnitas.
+    def validar_n(self, texto, minimo=2, maximo=8):
+        return validar_n(texto, minimo, maximo)
+
+    # Validar la forma de una matriz.
+    def validar_forma(self, filas, n):
+        return validar_forma(filas, n)
+
+    # Validar los datos de una tabla.
+    def validar_tabla(self, tabla):
+        return validar_tabla(tabla)
+
+    # Leer un archivo CSV y preparar sus datos.
+    def cargar_csv(self, ruta):
+        correcto, filas = leer_csv(ruta)
+
+        if not correcto:
+            raise ValueError(filas)
+
+        correcto, resultado = validar_tabla(filas)
+
+        if not correcto:
+            raise ValueError(resultado)
+
+        return resultado
+
+    # Resolver un sistema mediante eliminación gaussiana.
     def resolver_sistema(self, A, b):
+        n = len(A)
 
-        # Construye la matriz aumentada a partir de la matriz A y el vector b.
+        if n == 0 or len(b) != n:
+            raise ValueError("Las dimensiones del sistema no son correctas.")
+
+        # Comprobar que la matriz sea cuadrada.
+        tabla = []
+
+        for i in range(n):
+            tabla.append(list(A[i]) + [b[i]])
+
+        correcto, mensaje = validar_forma(tabla, n)
+
+        if not correcto:
+            raise ValueError(mensaje)
+
+        # Construir la matriz aumentada.
         matriz = crear_matriz_aumentada(A, b)
 
-        # Aplica eliminación gaussiana.
-        # Retorna la matriz resultante, los pasos realizados,
-        # las matrices de cada paso y las posiciones de los pivotes.
+        # Aplicar eliminación gaussiana.
         resultado, pasos, matrices, pivotes = eliminacion_gaussiana(matriz)
 
-        # Determina si el sistema tiene solución única, infinitas soluciones o ninguna.
+        # Clasificar el sistema y calcular sus rangos.
         tipo = clasificar(resultado, pivotes)
+        rango_A, rango_aumentada = calcular_rangos(resultado, pivotes)
 
-        # Calcula el rango de la matriz de coeficientes.
-        rango_A = len(pivotes)
+        # Inicializar los resultados.
+        solucion = None
+        verificacion = None
+        Ax = None
+        general = None
+        libres = None
 
-        # Calcula el rango de la matriz aumentada.
-        # Si el sistema no tiene solución, el rango aumentado es mayor.
-        rango_aumentada = rango_A + 1 if tipo == "ninguna" else rango_A
-
-        # Inicializa las variables que almacenarán los resultados.
-        solucion = verificacion = Ax = general = libres = None
-
-        # Si el sistema tiene solución única:
+        # Si tiene solución única.
         if tipo == "unica":
-
-            # Obtiene los valores de las incógnitas mediante sustitución hacia atrás.
             solucion = sustitucion_hacia_atras(resultado)
-
-            # Comprueba la solución sustituyendo los valores en el sistema original.
             verificacion, Ax = comprobar_solucion(A, b, solucion)
 
-        # Si el sistema tiene infinitas soluciones:
+        # Si tiene infinitas soluciones.
         elif tipo == "infinitas":
-
-            # Obtiene la expresión general de las soluciones
-            # y las variables libres del sistema.
             general, libres = solucion_general(resultado, pivotes)
 
-        # Retorna toda la información obtenida al resolver el sistema.
+        # Devolver los resultados.
         return {
             "tipo": tipo,
             "matriz": resultado,
@@ -87,40 +114,33 @@ class Dominio:
             "libres": libres
         }
 
-    # Valida si una matriz cumple las condiciones necesarias
-    # para aplicar Gauss-Seidel.
+    # Comprobar si la matriz es diagonalmente dominante.
     def validar_matriz_seidel(self, A):
-
-        # Obtiene la cantidad de filas de la matriz.
         n = len(A)
 
-        # Comprueba que la matriz sea cuadrada y tenga al menos 2 filas.
-        if n < 2 or any(len(fila) != n for fila in A):
-            raise ValueError("La matriz debe ser cuadrada y tener al menos 2 filas.")
+        if n == 0:
+            raise ValueError("La matriz está vacía.")
 
-        # Comprueba que ningún elemento de la diagonal principal sea cero.
+        for fila in A:
+            if len(fila) != n:
+                raise ValueError("La matriz debe ser cuadrada.")
+
         for i in range(n):
             if A[i][i] == 0:
-                raise ValueError(f"El elemento A[{i+1},{i+1}] de la diagonal principal no puede ser cero.")
+                raise ValueError("La diagonal principal no puede tener ceros.")
 
-        # Inicialmente se considera que la matriz es diagonalmente dominante.
         dominante = True
 
-        # Recorre cada fila de la matriz.
         for i in range(n):
+            suma = 0
 
-            # Suma los valores absolutos de los elementos que están
-            # fuera de la diagonal principal en la fila actual.
-            suma = sum(abs(A[i][j]) for j in range(n) if j != i)
+            for j in range(n):
+                if i != j:
+                    suma += abs(A[i][j])
 
-            # Comprueba si el elemento diagonal es menor que esa suma.
             if abs(A[i][i]) < suma:
-
-                # Si no cumple la condición, la matriz no es diagonalmente dominante.
                 dominante = False
-                break
 
-        # Retorna True si es diagonalmente dominante o False en caso contrario.
         return dominante
 
     # Comprueba si la matriz es estrictamente diagonalmente dominante:
@@ -139,22 +159,16 @@ class Dominio:
 
     # Resuelve un sistema utilizando el método iterativo de Gauss-Seidel.
     def resolver_seidel(self, A, b, x0=None, tolerancia=0.000001, max_iteraciones=1000):
+        if x0 is None:
+            x0 = [0] * len(A)
 
-        # Obtiene el número de incógnitas del sistema.
-        n = len(A)
+        return gauss_seidel(A, b, x0, tolerancia, max_iteraciones)
 
-        # Si no se proporciona una aproximación inicial,
-        # se utiliza un vector de ceros.
-        if x0 is None: x0 = [0] * n
-
-        # Ejecuta el método de Gauss-Seidel con los parámetros recibidos.
-        resultado = gauss_seidel(A, b, x0, tolerancia, max_iteraciones)
-
-        # Retorna los resultados obtenidos por el método.
-        return resultado
-
-    # Compara el rendimiento de la eliminación gaussiana y Gauss-Seidel.
+    # Comparar los tiempos de ambos métodos.
     def comparar_metodos(self, A, b, x0=None, tolerancia=0.000001, max_iteraciones=1000, repeticiones=1):
+        return self.comparador.comparar_metodos(
+            A, b, x0, tolerancia, max_iteraciones, repeticiones
+        )
 
         # Obtiene el número de incógnitas del sistema.
         n = len(A)
