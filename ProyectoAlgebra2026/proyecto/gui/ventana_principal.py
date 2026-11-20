@@ -133,7 +133,7 @@ class VentanaPrincipal(tk.Tk):
         self.limpiar_ventana()
 
         # Marco fijo para mantener visible el botón Volver
-        marco_inferior = ttk.Frame(self)
+        marco_inferior = ttk.Frame(self.area)
         marco_inferior.pack(side='bottom', fill='x', pady=10)
 
         ttk.Button(
