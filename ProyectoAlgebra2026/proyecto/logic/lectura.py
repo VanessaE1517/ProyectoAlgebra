@@ -49,27 +49,3 @@ def leer_csv(ruta):
 
     except OSError:
         return False, "Ocurrió un error al abrir o leer el archivo"
-    
-
-
-
-
-if __name__ == "__main__":
-
-    pruebas = ["1 2", " 7 ", "-2.5", "3/4", "1,5", "", "abc", "3/0", "--3"]
-
-    for texto in pruebas:
-        resultado = convertir_a_fraccion(texto)
-        print(texto, "->", resultado)
-
-#probar la lectura del csv
-
-    print("Prueba de leer_csv:")
-
-    resultado = leer_csv("prueba.csv")
-    print(resultado)
-
-    print("\nPrueba de archivo inexistente:")
-
-    resultado = leer_csv("no_existe.csv")
-    print(resultado)
