@@ -1,19 +1,27 @@
-
 from fractions import Fraction
 import copy
 
 # Creación de la matriz aumentada
 # Une la matriz A con el vector b
-def crear_matriz_aumentada(A, b):
+# Si usar_fracciones es False los números se guardan como float (más rápido,
+# se usa para medir tiempos con sistemas grandes)
+def crear_matriz_aumentada(A, b, usar_fracciones=True):
     m = []
 
     for i in range(len(A)):
         fila = []
 
         for j in range(len(A[i])):
-            fila.append(Fraction(str(A[i][j])))
+            if usar_fracciones:
+                fila.append(Fraction(str(A[i][j])))
+            else:
+                fila.append(float(A[i][j]))
 
-        fila.append(Fraction(str(b[i])))
+        if usar_fracciones:
+            fila.append(Fraction(str(b[i])))
+        else:
+            fila.append(float(b[i]))
+
         m.append(fila)
 
     return m
@@ -44,7 +52,9 @@ def intercambiar_filas(m, i, j):
 
 
 # Para eliminar los elementos debajo del pivote
-def eliminar_debajo_pivote(m, fila_pivote, col):
+# Si guardar_pasos es False no se guardan los pasos ni las copias de la matriz
+# (guardarlas es lo que hace lento el método con sistemas grandes)
+def eliminar_debajo_pivote(m, fila_pivote, col, guardar_pasos=True):
     pasos = []
     matrices = []
 
@@ -57,17 +67,20 @@ def eliminar_debajo_pivote(m, fila_pivote, col):
             for k in range(col, len(m[i])):
                 m[i][k] -= mult * m[fila_pivote][k]
 
-            pasos.append(
-                f"F{i+1} - ({mult}) F{fila_pivote+1} -> F{i+1}"
-            )
+            if guardar_pasos:
+                pasos.append(
+                    f"F{i+1} - ({mult}) F{fila_pivote+1} -> F{i+1}"
+                )
 
-            matrices.append(copy.deepcopy(m))
+                matrices.append(copy.deepcopy(m))
 
     return pasos, matrices
 
 
 # Eliminación gaussiana
-def eliminacion_gaussiana(m):
+# Si guardar_pasos es False no se guardan los pasos (la matriz final y las
+# columnas pivote se obtienen igual)
+def eliminacion_gaussiana(m, guardar_pasos=True):
     pasos = []
     matrices = []
     columnas_pivote = []
@@ -92,16 +105,17 @@ def eliminacion_gaussiana(m):
 
             intercambiar_filas(m, fila_pivote, mejor)
 
-            pasos.append(
-                f"F{fila_pivote+1} <-> F{mejor+1}"
-            )
+            if guardar_pasos:
+                pasos.append(
+                    f"F{fila_pivote+1} <-> F{mejor+1}"
+                )
 
-            matrices.append(copy.deepcopy(m))
+                matrices.append(copy.deepcopy(m))
 
         columnas_pivote.append(col)
 
         nuevos_pasos, nuevas_matrices = eliminar_debajo_pivote(
-            m, fila_pivote, col
+            m, fila_pivote, col, guardar_pasos
         )
 
         for i in range(len(nuevos_pasos)):
@@ -145,4 +159,3 @@ def comprobar_solucion(A, b, x, tolerancia=0.000001):
             correcto = False
 
     return correcto, Ax
-

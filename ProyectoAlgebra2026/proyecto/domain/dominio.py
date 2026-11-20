@@ -1,4 +1,3 @@
-
 import time
 import copy
 import random
@@ -20,6 +19,10 @@ from logic.gauss import (
 
 # Importa la función que clasifica el sistema según sus soluciones.
 from logic.clasificacion import clasificar
+
+# Importa la lectura y la validación de archivos CSV.
+from logic.lectura import leer_csv
+from logic.validaciones import validar_forma, validar_tabla
 
 
 class Dominio:
@@ -120,6 +123,20 @@ class Dominio:
         # Retorna True si es diagonalmente dominante o False en caso contrario.
         return dominante
 
+    # Comprueba si la matriz es estrictamente diagonalmente dominante:
+    # en cada fila, |a_ii| es mayor que la suma de los demás |a_ij|.
+    # Una matriz así siempre tiene solución única.
+    def es_estrictamente_dominante(self, A):
+        n = len(A)
+
+        for i in range(n):
+            suma = sum(abs(A[i][j]) for j in range(n) if j != i)
+
+            if abs(A[i][i]) <= suma:
+                return False
+
+        return True
+
     # Resuelve un sistema utilizando el método iterativo de Gauss-Seidel.
     def resolver_seidel(self, A, b, x0=None, tolerancia=0.000001, max_iteraciones=1000):
 
@@ -165,19 +182,32 @@ class Dominio:
         if len(x0) != n:
             raise ValueError("El vector inicial debe tener exactamente n valores.")
 
-        # Comprueba si la matriz es diagonalmente dominante.
+        # Comprueba que el sistema tenga solución única (esto no cuenta en el tiempo medido).
+        if n <= 20:
+
+            # Sistema pequeño: se clasifica con fracciones, el resultado es exacto.
+            resultado_gauss = self.resolver_sistema(A, b)
+
+            # No permite comparar los métodos si el sistema tiene infinitas soluciones.
+            if resultado_gauss["tipo"] == "infinitas":
+                raise ValueError("El sistema tiene infinitas soluciones. No se puede realizar la comparación.")
+
+            # No permite comparar los métodos si el sistema no tiene solución.
+            if resultado_gauss["tipo"] == "ninguna":
+                raise ValueError("El sistema no tiene solución. No se puede realizar la comparación.")
+
+        # Sistema grande: si es estrictamente diagonalmente dominante ya se sabe
+        # que tiene solución única. Si no lo es, se hace una eliminación rápida
+        # (sin guardar pasos) y se revisa que haya un pivote en cada columna.
+        elif not self.es_estrictamente_dominante(A):
+            matriz = crear_matriz_aumentada(A, b, False)
+            resultado, pasos, matrices, pivotes = eliminacion_gaussiana(matriz, False)
+
+            if len(pivotes) != n:
+                raise ValueError("El sistema no tiene solución única. No se puede realizar la comparación.")
+
+        # Comprueba que no haya ceros en la diagonal y si la matriz es diagonalmente dominante.
         dominante = self.validar_matriz_seidel(A)
-
-        # Resuelve el sistema mediante eliminación gaussiana.
-        resultado_gauss = self.resolver_sistema(A, b)
-
-        # No permite comparar los métodos si el sistema tiene infinitas soluciones.
-        if resultado_gauss["tipo"] == "infinitas":
-            raise ValueError("El sistema tiene infinitas soluciones. No se puede realizar la comparación.")
-
-        # No permite comparar los métodos si el sistema no tiene solución.
-        if resultado_gauss["tipo"] == "ninguna":
-            raise ValueError("El sistema no tiene solución. No se puede realizar la comparación.")
 
         # Lista donde se almacenarán los tiempos de cada ejecución de Gauss.
         tiempos_gauss = []
@@ -186,14 +216,14 @@ class Dominio:
         # Ejecuta la eliminación gaussiana la cantidad de veces indicada.
         for _ in range(repeticiones):
 
-            # Crea copias de A y b para evitar modificar los datos originales.
-            matriz = crear_matriz_aumentada(copy.deepcopy(A), copy.deepcopy(b))
-
             # Registra el tiempo inicial.
             inicio = time.perf_counter()
 
-            # Ejecuta la eliminación gaussiana.
-            resultado, pasos, matrices, pivotes = eliminacion_gaussiana(matriz)
+            # Crea la matriz aumentada con float (es una copia, no modifica A ni b).
+            matriz = crear_matriz_aumentada(A, b, False)
+
+            # Ejecuta la eliminación gaussiana sin guardar los pasos.
+            resultado, pasos, matrices, pivotes = eliminacion_gaussiana(matriz, False)
 
             # Obtiene la solución mediante sustitución hacia atrás.
             solucion = sustitucion_hacia_atras(resultado)
@@ -211,15 +241,20 @@ class Dominio:
         # Ejecuta Gauss-Seidel la cantidad de veces indicada.
         for _ in range(repeticiones):
 
+            # Crea copias para conservar los datos originales.
+            # Se hacen antes de medir, para que no cuenten en el tiempo.
+            A_copia = copy.deepcopy(A)
+            b_copia = copy.deepcopy(b)
+            x0_copia = copy.deepcopy(x0)
+
             # Registra el tiempo inicial.
             inicio = time.perf_counter()
 
             # Resuelve el sistema mediante Gauss-Seidel.
-            # Se utilizan copias para conservar los datos originales.
             resultado_seidel = self.resolver_seidel(
-                copy.deepcopy(A),
-                copy.deepcopy(b),
-                copy.deepcopy(x0),
+                A_copia,
+                b_copia,
+                x0_copia,
                 tolerancia,
                 max_iteraciones
             )
@@ -270,6 +305,7 @@ class Dominio:
 
         # Retorna los resultados de la comparación.
         return {
+            "repeticiones": repeticiones,
             "solucion_gauss": solucion,
             "solucion_seidel": resultado_seidel["solucion"],
             "diferencias": diferencias,
@@ -284,6 +320,23 @@ class Dominio:
             "factor_rapidez": factor_rapidez,
             "diagonalmente_dominante": dominante
         }
+
+    # Lee un sistema desde un archivo CSV y lo valida.
+    # Retorna (True, (A, b)) si todo está bien, o (False, "mensaje") si hay un error.
+    def cargar_sistema_csv(self, ruta, n):
+
+        # Lee el archivo y separa sus filas.
+        ok, filas = leer_csv(ruta)
+        if not ok:
+            return False, filas
+
+        # Comprueba que tenga n filas y n+1 columnas en cada fila.
+        ok, mensaje = validar_forma(filas, n)
+        if not ok:
+            return False, mensaje
+
+        # Convierte los textos a números y separa A y b.
+        return validar_tabla(filas)
 
     # Genera automáticamente un sistema de ecuaciones aleatorio.
     def generar_sistema_aleatorio(self, n):
@@ -339,7 +392,7 @@ class Dominio:
     def ejecutar_experimento(self, tamanos=None, tolerancia=0.000001, max_iteraciones=1000, repeticiones=3):
 
         # Si no se indican tamaños, utiliza los siguientes valores predeterminados.
-        if tamanos is None: tamanos = [10, 20, 50, 100, 300, 500]
+        if tamanos is None: tamanos = [10, 20, 50, 100, 300]
 
         # Lista donde se almacenarán los resultados de cada experimento.
         resultados = []
