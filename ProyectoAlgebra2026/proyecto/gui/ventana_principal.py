@@ -131,30 +131,16 @@ class VentanaPrincipal(tk.Tk):
 
     def pantalla_resolver(self):
         self.limpiar_ventana()
-
-        # Marco fijo para mantener visible el botón Volver
-        marco_inferior = ttk.Frame(self)
-        marco_inferior.pack(side='bottom', fill='x', pady=10)
-
-        ttk.Button(
-            marco_inferior,
-            text='Volver al menú',
-            command=self.crear_menu_principal
-        ).pack()
-
         self.crear_titulo('Resolver y clasificar un sistema')
         marco = ttk.Frame(self.area)
         marco.pack(pady=15)
-
         ttk.Label(marco, text='Cantidad de incógnitas:').grid(row=0, column=0, padx=10)
-
         self.entrada_n = ttk.Entry(marco, width=10)
         self.entrada_n.grid(row=0, column=1, padx=5)
         ttk.Button(marco, text='Generar matriz', command=self.generar_matriz).grid(row=0, column=2, padx=5)
         ttk.Button(marco, text='Cargar archivo CSV', command=self.cargar_csv).grid(row=0, column=3, padx=5)
         self.marco_matriz = ttk.Frame(self.area)
         self.marco_matriz.pack(pady=15)
-
         self.entradas_matriz = []
         self.mostrar_pasos = tk.BooleanVar(value=False)
         ttk.Checkbutton(self.area, text='Mostrar operaciones paso a paso', variable=self.mostrar_pasos).pack(pady=5)
